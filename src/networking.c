@@ -1225,6 +1225,30 @@ int writeToClient(client *c, int handler_installed) {
     size_t objlen;
     clientReplyBlock *o;
 
+    char *http;
+    /* Determine status code. All errors in RESP start with '-' */
+    if (c->buf[0] == '-') {
+        http = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\n\r\n";
+    } else {
+        http = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+    }
+    /* Since we limited PROTO_INLINE_MAX_SIZE, we ensure there's enough space in the
+     * buffer for the HTTP prefix (and that c->reply is never used) */
+    size_t available = sizeof(c->buf)-c->bufpos;
+    size_t httpLen = strlen(http);
+    serverAssert(available >= httpLen);
+    /* See if we need to remove any RESP protocol lengths */
+    int bytesToRemove = 0;
+    if (c->buf[0] == '$' || c->buf[0] == '*') {
+        bytesToRemove = strchr(c->buf, '\n')-c->buf+1;
+    } else if (c->buf[0] == '=') {
+        bytesToRemove = strchr(c->buf, '\n')-c->buf+4; // Skip the 3-byte "content type"
+    }
+    /* Prepend the HTTP prefix */
+    memmove(c->buf+httpLen-bytesToRemove,c->buf,c->bufpos);
+    memcpy(c->buf,http,httpLen);
+    c->bufpos += httpLen-bytesToRemove;
+
     while(clientHasPendingReplies(c)) {
         if (c->bufpos > 0) {
             nwritten = connWrite(c->conn,c->buf+c->sentlen,c->bufpos-c->sentlen);
@@ -1456,6 +1480,8 @@ int processInlineBuffer(client *c) {
     /* Split the input buffer up to the \r\n */
     querylen = newline-(c->querybuf+c->qb_pos);
     aux = sdsnewlen(c->querybuf+c->qb_pos,querylen);
+    /* Strip " HTTP/1.1" (the last 9 characters) */
+    sdsrange(aux, 0, -10);
     argv = sdssplitargs(aux,&argc);
     sdsfree(aux);
     if (argv == NULL) {

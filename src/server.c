@@ -180,10 +180,6 @@ volatile unsigned long lru_clock; /* Server global current LRU time. */
  */
 
 struct redisCommand redisCommandTable[] = {
-    {"module",moduleCommand,-2,
-     "admin no-script",
-     0,NULL,0,0,0,0,0,0},
-
     {"get",getCommand,2,
      "read-only fast @string",
      0,NULL,1,1,1,0,0,0},
@@ -582,14 +578,6 @@ struct redisCommand redisCommandTable[] = {
      "read-only random @keyspace",
      0,NULL,0,0,0,0,0,0},
 
-    {"select",selectCommand,2,
-     "ok-loading fast ok-stale @keyspace",
-     0,NULL,0,0,0,0,0,0},
-
-    {"swapdb",swapdbCommand,3,
-     "write fast @keyspace @dangerous",
-     0,NULL,0,0,0,0,0,0},
-
     {"move",moveCommand,3,
      "write fast @keyspace",
      0,NULL,1,1,1,0,0,0},
@@ -647,20 +635,12 @@ struct redisCommand redisCommandTable[] = {
      "read-only fast @connection",
      0,NULL,0,0,0,0,0,0},
 
-    {"save",saveCommand,1,
-     "admin no-script",
-     0,NULL,0,0,0,0,0,0},
-
     {"bgsave",bgsaveCommand,-1,
      "admin no-script",
      0,NULL,0,0,0,0,0,0},
 
     {"bgrewriteaof",bgrewriteaofCommand,1,
      "admin no-script",
-     0,NULL,0,0,0,0,0,0},
-
-    {"shutdown",shutdownCommand,-1,
-     "admin no-script ok-loading ok-stale",
      0,NULL,0,0,0,0,0,0},
 
     {"lastsave",lastsaveCommand,1,
@@ -683,37 +663,9 @@ struct redisCommand redisCommandTable[] = {
      "no-script fast @transaction",
      0,NULL,0,0,0,0,0,0},
 
-    {"sync",syncCommand,1,
-     "admin no-script",
-     0,NULL,0,0,0,0,0,0},
-
-    {"psync",syncCommand,3,
-     "admin no-script",
-     0,NULL,0,0,0,0,0,0},
-
-    {"replconf",replconfCommand,-1,
-     "admin no-script ok-loading ok-stale",
-     0,NULL,0,0,0,0,0,0},
-
-    {"flushdb",flushdbCommand,-1,
-     "write @keyspace @dangerous",
-     0,NULL,0,0,0,0,0,0},
-
-    {"flushall",flushallCommand,-1,
-     "write @keyspace @dangerous",
-     0,NULL,0,0,0,0,0,0},
-
     {"sort",sortCommand,-2,
      "write use-memory @list @set @sortedset @dangerous",
      0,sortGetKeys,1,1,1,0,0,0},
-
-    {"info",infoCommand,-1,
-     "ok-loading ok-stale random @dangerous",
-     0,NULL,0,0,0,0,0,0},
-
-    {"monitor",monitorCommand,1,
-     "admin no-script ok-loading ok-stale",
-     0,NULL,0,0,0,0,0,0},
 
     {"ttl",ttlCommand,2,
      "read-only fast random @keyspace",
@@ -730,26 +682,6 @@ struct redisCommand redisCommandTable[] = {
     {"persist",persistCommand,2,
      "write fast @keyspace",
      0,NULL,1,1,1,0,0,0},
-
-    {"slaveof",replicaofCommand,3,
-     "admin no-script ok-stale",
-     0,NULL,0,0,0,0,0,0},
-
-    {"replicaof",replicaofCommand,3,
-     "admin no-script ok-stale",
-     0,NULL,0,0,0,0,0,0},
-
-    {"role",roleCommand,1,
-     "ok-loading ok-stale no-script fast read-only @dangerous",
-     0,NULL,0,0,0,0,0,0},
-
-    {"debug",debugCommand,-2,
-     "admin no-script ok-loading ok-stale",
-     0,NULL,0,0,0,0,0,0},
-
-    {"config",configCommand,-2,
-     "admin ok-loading ok-stale no-script",
-     0,NULL,0,0,0,0,0,0},
 
     {"subscribe",subscribeCommand,-2,
      "pub-sub no-script ok-loading ok-stale",
@@ -783,70 +715,12 @@ struct redisCommand redisCommandTable[] = {
      "no-script fast @transaction",
      0,NULL,0,0,0,0,0,0},
 
-    {"cluster",clusterCommand,-2,
-     "admin ok-stale random",
-     0,NULL,0,0,0,0,0,0},
-
-    {"restore",restoreCommand,-4,
-     "write use-memory @keyspace @dangerous",
-     0,NULL,1,1,1,0,0,0},
-
-    {"restore-asking",restoreCommand,-4,
-    "write use-memory cluster-asking @keyspace @dangerous",
-    0,NULL,1,1,1,0,0,0},
-
-    {"migrate",migrateCommand,-6,
-     "write random @keyspace @dangerous",
-     0,migrateGetKeys,0,0,0,0,0,0},
-
-    {"asking",askingCommand,1,
-     "fast @keyspace",
-     0,NULL,0,0,0,0,0,0},
-
-    {"readonly",readonlyCommand,1,
-     "fast @keyspace",
-     0,NULL,0,0,0,0,0,0},
-
-    {"readwrite",readwriteCommand,1,
-     "fast @keyspace",
-     0,NULL,0,0,0,0,0,0},
-
-    {"dump",dumpCommand,2,
-     "read-only random @keyspace",
-     0,NULL,1,1,1,0,0,0},
-
     {"object",objectCommand,-2,
      "read-only random @keyspace",
      0,NULL,2,2,1,0,0,0},
 
-    {"memory",memoryCommand,-2,
-     "random read-only",
-     0,memoryGetKeys,0,0,0,0,0,0},
-
-    {"client",clientCommand,-2,
-     "admin no-script random ok-loading ok-stale @connection",
-     0,NULL,0,0,0,0,0,0},
-
     {"hello",helloCommand,-2,
      "no-auth no-script fast no-monitor ok-loading ok-stale no-slowlog @connection",
-     0,NULL,0,0,0,0,0,0},
-
-    /* EVAL can modify the dataset, however it is not flagged as a write
-     * command since we do the check while running commands from Lua. */
-    {"eval",evalCommand,-3,
-     "no-script @scripting",
-     0,evalGetKeys,0,0,0,0,0,0},
-
-    {"evalsha",evalShaCommand,-3,
-     "no-script @scripting",
-     0,evalGetKeys,0,0,0,0,0,0},
-
-    {"slowlog",slowlogCommand,-2,
-     "admin random ok-loading ok-stale",
-     0,NULL,0,0,0,0,0,0},
-
-    {"script",scriptCommand,-2,
-     "no-script @scripting",
      0,NULL,0,0,0,0,0,0},
 
     {"time",timeCommand,1,
@@ -865,50 +739,9 @@ struct redisCommand redisCommandTable[] = {
      "read-only @bitmap",
      0,NULL,1,1,1,0,0,0},
 
-    {"wait",waitCommand,3,
-     "no-script @keyspace",
-     0,NULL,0,0,0,0,0,0},
-
     {"command",commandCommand,-1,
      "ok-loading ok-stale random @connection",
      0,NULL,0,0,0,0,0,0},
-
-    {"geoadd",geoaddCommand,-5,
-     "write use-memory @geo",
-     0,NULL,1,1,1,0,0,0},
-
-    /* GEORADIUS has store options that may write. */
-    {"georadius",georadiusCommand,-6,
-     "write @geo",
-     0,georadiusGetKeys,1,1,1,0,0,0},
-
-    {"georadius_ro",georadiusroCommand,-6,
-     "read-only @geo",
-     0,georadiusGetKeys,1,1,1,0,0,0},
-
-    {"georadiusbymember",georadiusbymemberCommand,-5,
-     "write @geo",
-     0,georadiusGetKeys,1,1,1,0,0,0},
-
-    {"georadiusbymember_ro",georadiusbymemberroCommand,-5,
-     "read-only @geo",
-     0,georadiusGetKeys,1,1,1,0,0,0},
-
-    {"geohash",geohashCommand,-2,
-     "read-only @geo",
-     0,NULL,1,1,1,0,0,0},
-
-    {"geopos",geoposCommand,-2,
-     "read-only @geo",
-     0,NULL,1,1,1,0,0,0},
-
-    {"geodist",geodistCommand,-4,
-     "read-only @geo",
-     0,NULL,1,1,1,0,0,0},
-
-    {"pfselftest",pfselftestCommand,1,
-     "admin @hyperloglog",
-      0,NULL,0,0,0,0,0,0},
 
     {"pfadd",pfaddCommand,-2,
      "write use-memory fast @hyperloglog",
@@ -925,10 +758,6 @@ struct redisCommand redisCommandTable[] = {
     {"pfmerge",pfmergeCommand,-2,
      "write use-memory @hyperloglog",
      0,NULL,1,-1,1,0,0,0},
-
-    {"pfdebug",pfdebugCommand,-3,
-     "admin write",
-     0,NULL,0,0,0,0,0,0},
 
     {"xadd",xaddCommand,-5,
      "write use-memory fast random @stream",
@@ -986,25 +815,9 @@ struct redisCommand redisCommandTable[] = {
      "write random @stream",
      0,NULL,1,1,1,0,0,0},
 
-    {"post",securityWarningCommand,-1,
-     "ok-loading ok-stale read-only",
-     0,NULL,0,0,0,0,0,0},
-
-    {"host:",securityWarningCommand,-1,
-     "ok-loading ok-stale read-only",
-     0,NULL,0,0,0,0,0,0},
-
-    {"latency",latencyCommand,-2,
-     "admin no-script ok-loading ok-stale",
-     0,NULL,0,0,0,0,0,0},
-
     {"lolwut",lolwutCommand,-1,
      "read-only fast",
      0,NULL,0,0,0,0,0,0},
-
-    {"acl",aclCommand,-2,
-     "admin no-script no-slowlog ok-loading ok-stale",
-     0,NULL,0,0,0,0,0,0}
 };
 
 /*============================ Utility functions ============================ */
@@ -3345,8 +3158,8 @@ int processCommand(client *c) {
         int i;
         for (i=1; i < c->argc && sdslen(args) < 128; i++)
             args = sdscatprintf(args, "`%.*s`, ", 128-(int)sdslen(args), (char*)c->argv[i]->ptr);
-        addReplyErrorFormat(c,"unknown command `%s`, with args beginning with: %s",
-            (char*)c->argv[0]->ptr, args);
+        /* We probably hit the HTTP headers, so just close the connection */
+        c->flags |= CLIENT_CLOSE_AFTER_REPLY;
         sdsfree(args);
         return C_OK;
     } else if ((c->cmd->arity > 0 && c->cmd->arity != c->argc) ||
