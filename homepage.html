@@ -83,7 +83,7 @@ If you've SET a key, you can view the page by clicking here: <a href="/my-custom
 <hr>
 <br/>
 <h2 id="how-does-it-work">How does it work?</h2>
-<p>Redis normally executes commands by parsing its own protocal called RESP: <a href="https://redis.io/topics/protocol" class="uri">https://redis.io/topics/protocol</a></p>
+<p>Redis normally executes commands by parsing its own protocol called RESP: <a href="https://redis.io/topics/protocol" class="uri">https://redis.io/topics/protocol</a></p>
 <p>But the protocol also support &quot;Inline Commands&quot;, which look like this:</p>
 <pre>GET somekey
 SET somekey somevalue
@@ -109,6 +109,13 @@ Content-Type: text/html\r\n
 somevalue
 </pre>
 <p>Now we can serve entire webpages from Redis directly (such as this one)!</p>
+
+<h2 id="limitations">Limitations</h2>
+<ul>
+  <li>To simplify the parsing code, request bodies are limited to 16128 bytes. My poor C skills are to blame for this.</li>
+  <li>Some commands can't be sent, like ones that take one argument. This is because the method (command) and URI (arguments) are both required in the HTTP spec.</li>
+  <li>Some commands are explictly removed, such as SHUTDOWN.</li>
+</ul>
 
 <h2 id="see-the-code">See the code</h2>
 <a href="https://github.com/mac-chaffee/redis-over-http">https://github.com/mac-chaffee/redis-over-http</a>
