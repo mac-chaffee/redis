@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Untitled</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+      body{
+        font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji;
+        max-width: 48rem;
+        padding: 2rem;
+        margin: auto;
+      }
+      pre{
+        background-color: #f6f8fa;
+        font-family: SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
+        padding: 16px;
+        line-height: 1.45;
+      }
+      
+  </style>
+</head>
+<body>
+<h1 id="redis-over-http">Redis over HTTP</h1>
+<p>This page was served directly from Redis. There are no webservers sitting in between.</p>
+<h2 id="try-it-out">Try it out</h2>
+
+<h2 id="how-does-it-work">How does it work?</h2>
+<p>Redis normally executes commands by parsing its own protocal called RESP: <a href="https://redis.io/topics/protocol" class="uri">https://redis.io/topics/protocol</a></p>
+<p>But the protocol also support &quot;Inline Commands&quot;, which look like this:</p>
+<pre><code>GET somekey
+SET somekey somevalue
+</code></pre>
+<p>This just so happens to be close enough to HTTP:</p>
+<pre><code>GET /somekey HTTP/1.1
+</code></pre>
+<p>With a little abuse of the HTTProtocol, we can use unsupported verbs like SET and we can add spaces to the path:</p>
+<pre><code>SET /somekey &quot;somevalue&quot; HTTP/1.1
+</code></pre>
+<p>Then all we have to do is change the Redis source code to remove the extra bits like &quot;HTTP/1.1&quot; and the preceding slash. Now we can use curl to talk to redis!</p>
+<pre><code>curl localhost:6379/somekey
+curl -X SET &quot;localhost:6379/somekey \&quot;somevalue\&quot;&quot;
+</code></pre>
+<p>But the output will be normal RESP unless we also change how Redis generates responses. All we need to do is replace some control characters (like length of strings, error characters) with their HTTP equivalent.</p>
+<p>Redis normally responds with this:</p>
+<pre><code>$6\r\somevalue\r\n
+</code></pre>
+<p>So we change that to:</p>
+<pre><code>HTTP/1.1 200 OK\r\n
+Content-Type: text/html\r\n
+\r\n
+somevalue
+</code></pre>
+<p>Now we can serve entire webpages from Redis directly (such as this one)!</p>
+</body>
+</html>
