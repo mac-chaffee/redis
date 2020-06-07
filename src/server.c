@@ -990,10 +990,6 @@ struct redisCommand redisCommandTable[] = {
      "ok-loading ok-stale read-only",
      0,NULL,0,0,0,0,0,0},
 
-    {"host:",securityWarningCommand,-1,
-     "ok-loading ok-stale read-only",
-     0,NULL,0,0,0,0,0,0},
-
     {"latency",latencyCommand,-2,
      "admin no-script ok-loading ok-stale",
      0,NULL,0,0,0,0,0,0},
