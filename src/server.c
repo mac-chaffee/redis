@@ -3345,8 +3345,8 @@ int processCommand(client *c) {
         int i;
         for (i=1; i < c->argc && sdslen(args) < 128; i++)
             args = sdscatprintf(args, "`%.*s`, ", 128-(int)sdslen(args), (char*)c->argv[i]->ptr);
-        addReplyErrorFormat(c,"unknown command `%s`, with args beginning with: %s",
-            (char*)c->argv[0]->ptr, args);
+        /* We probably hit the HTTP headers, so just close the connection */
+        c->flags |= CLIENT_CLOSE_AFTER_REPLY;
         sdsfree(args);
         return C_OK;
     } else if ((c->cmd->arity > 0 && c->cmd->arity != c->argc) ||
