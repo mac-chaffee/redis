@@ -25,11 +25,12 @@ Then you can build and test the code with:
 ```
 cd src
 make
-./redis-server
+./redis-server ../redis.conf
 ```
 
 * To test a GET command: `curl -i localhost:6379/mykey`
 * To test a SET command: `curl -iX SET "localhost:6379/mykey \"somevalue\""`
+* To run administrative commands, `./redis-cli` still works since the HTTP code only affects use of the "inline" protocol.
 
 All other supported commands can be constructed similarly.
 
@@ -38,7 +39,7 @@ The contents of homepage.html are accessed by the key "/", which cannot be modif
 ### ACLs
 
 I use ACLs (new in redis 6.0) to prevent anonymous users from running dangerous commands.
-These ACLs can be found on line 751 of redis.conf.
+These ACLs can be found on line 764 of redis.conf.
 
 ## Limitations
 
