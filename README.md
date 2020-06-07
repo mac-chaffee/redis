@@ -35,6 +35,11 @@ All other supported commands can be constructed similarly.
 
 The contents of homepage.html are accessed by the key "/", which cannot be modified.
 
+### ACLs
+
+I use ACLs (new in redis 6.0) to prevent anonymous users from running dangerous commands.
+These ACLs can be found on line 751 of redis.conf.
+
 ## Limitations
 
 Requests sizes are limited to 16128 bytes to simplify buffer handling since I'm not exactly an expert in C code.
