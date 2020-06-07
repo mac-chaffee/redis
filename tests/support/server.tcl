@@ -159,12 +159,9 @@ proc start_server {options {code undefined}} {
     if {$::external} {
         if {[llength $::servers] == 0} {
             set srv {}
-            # In test_server_main(tests/test_helper.tcl:215~218), increase the value of start_port
-            # and assign it to ::port through the `--port` option, so we need to reduce it.
-            set baseport [expr {$::port-100}]
             dict set srv "host" $::host
-            dict set srv "port" $baseport
-            set client [redis $::host $baseport 0 $::tls]
+            dict set srv "port" $::port
+            set client [redis $::host $::port 0 $::tls]
             dict set srv "client" $client
             $client select 9
 
@@ -217,14 +214,14 @@ proc start_server {options {code undefined}} {
     dict set config dir [tmpdir server]
 
     # start every server on a different port
-    set ::port [find_available_port [expr {$::port+1}]]
+    set port [find_available_port $::baseport $::portcount]
     if {$::tls} {
         dict set config "port" 0
-        dict set config "tls-port" $::port
+        dict set config "tls-port" $port
         dict set config "tls-cluster" "yes"
         dict set config "tls-replication" "yes"
     } else {
-        dict set config port $::port
+        dict set config port $port
     }
 
     set unixsocket [file normalize [format "%s/%s" [dict get $config "dir"] "socket"]]
@@ -246,10 +243,10 @@ proc start_server {options {code undefined}} {
     set server_started 0
     while {$server_started == 0} {
         if {$::verbose} {
-            puts -nonewline "=== ($tags) Starting server ${::host}:${::port} "
+            puts -nonewline "=== ($tags) Starting server ${::host}:${port} "
         }
 
-        send_data_packet $::test_server_fd "server-spawning" "port $::port"
+        send_data_packet $::test_server_fd "server-spawning" "port $port"
 
         if {$::valgrind} {
             set pid [exec valgrind --track-origins=yes --suppressions=src/valgrind.sup --show-reachable=no --show-possibly-lost=no --leak-check=full src/redis-server $config_file > $stdout 2> $stderr &]
@@ -294,19 +291,19 @@ proc start_server {options {code undefined}} {
         # for availability. Other test clients may grab the port before we
         # are able to do it for example.
         if {$port_busy} {
-            puts "Port $::port was already busy, trying another port..."
-            set ::port [find_available_port [expr {$::port+1}]]
+            puts "Port $port was already busy, trying another port..."
+            set port [find_available_port $::baseport $::portcount]
             if {$::tls} {
-                dict set config "tls-port" $::port
+                dict set config "tls-port" $port
             } else {
-                dict set config port $::port
+                dict set config port $port
             }
             create_server_config_file $config_file $config
             continue; # Try again
         }
 
         if {$code ne "undefined"} {
-            set serverisup [server_is_up $::host $::port $retrynum]
+            set serverisup [server_is_up $::host $port $retrynum]
         } else {
             set serverisup 1
         }
@@ -327,7 +324,6 @@ proc start_server {options {code undefined}} {
     # setup properties to be able to initialize a client object
     set port_param [expr $::tls ? {"tls-port"} : {"port"}]
     set host $::host
-    set port $::port
     if {[dict exists $config bind]} { set host [dict get $config bind] }
     if {[dict exists $config $port_param]} { set port [dict get $config $port_param] }
 

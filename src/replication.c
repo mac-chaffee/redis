@@ -162,7 +162,6 @@ void feedReplicationBacklog(void *ptr, size_t len) {
     unsigned char *p = ptr;
 
     server.master_repl_offset += len;
-    server.master_repl_meaningful_offset = server.master_repl_offset;
 
     /* This is a circular buffer, so write as much data we can at every
      * iteration and rewind the "idx" index if we reach the limit. */
@@ -306,6 +305,40 @@ void replicationFeedSlaves(list *slaves, int dictid, robj **argv, int argc) {
         for (j = 0; j < argc; j++)
             addReplyBulk(slave,argv[j]);
     }
+}
+
+/* This is a debugging function that gets called when we detect something
+ * wrong with the replication protocol: the goal is to peek into the
+ * replication backlog and show a few final bytes to make simpler to
+ * guess what kind of bug it could be. */
+void showLatestBacklog(void) {
+    if (server.repl_backlog == NULL) return;
+
+    long long dumplen = 256;
+    if (server.repl_backlog_histlen < dumplen)
+        dumplen = server.repl_backlog_histlen;
+
+    /* Identify the first byte to dump. */
+    long long idx =
+      (server.repl_backlog_idx + (server.repl_backlog_size - dumplen)) %
+       server.repl_backlog_size;
+
+    /* Scan the circular buffer to collect 'dumplen' bytes. */
+    sds dump = sdsempty();
+    while(dumplen) {
+        long long thislen =
+            ((server.repl_backlog_size - idx) < dumplen) ?
+            (server.repl_backlog_size - idx) : dumplen;
+
+        dump = sdscatrepr(dump,server.repl_backlog+idx,thislen);
+        dumplen -= thislen;
+        idx = 0;
+    }
+
+    /* Finally log such bytes: this is vital debugging info to
+     * understand what happened. */
+    serverLog(LL_WARNING,"Latest backlog is: '%s'", dump);
+    sdsfree(dump);
 }
 
 /* This function is used in order to proxy what we receive from our master
@@ -747,6 +780,9 @@ void syncCommand(client *c) {
         changeReplicationId();
         clearReplicationId2();
         createReplicationBacklog();
+        serverLog(LL_NOTICE,"Replication backlog created, my new "
+                            "replication IDs are '%s' and '%s'",
+                            server.replid, server.replid2);
     }
 
     /* CASE 1: BGSAVE is in progress, with disk target. */
@@ -1525,6 +1561,10 @@ void readSyncBulkPayload(connection *conn) {
 
         nread = connRead(conn,buf,readlen);
         if (nread <= 0) {
+            if (connGetState(conn) == CONN_STATE_CONNECTED) {
+                /* equivalent to EAGAIN */
+                return;
+            }
             serverLog(LL_WARNING,"I/O error trying to sync with MASTER: %s",
                 (nread == -1) ? strerror(errno) : "connection lost");
             cancelReplicationHandshake();
@@ -1769,7 +1809,6 @@ void readSyncBulkPayload(connection *conn) {
      * we are starting a new history. */
     memcpy(server.replid,server.master->replid,sizeof(server.replid));
     server.master_repl_offset = server.master->reploff;
-    server.master_repl_meaningful_offset = server.master->reploff;
     clearReplicationId2();
 
     /* Let's create the replication backlog if needed. Slaves need to
@@ -2479,14 +2518,18 @@ void replicationUnsetMaster(void) {
 
     sdsfree(server.masterhost);
     server.masterhost = NULL;
-    /* When a slave is turned into a master, the current replication ID
-     * (that was inherited from the master at synchronization time) is
-     * used as secondary ID up to the current offset, and a new replication
-     * ID is created to continue with a new replication history. */
-    shiftReplicationId();
     if (server.master) freeClient(server.master);
     replicationDiscardCachedMaster();
     cancelReplicationHandshake();
+    /* When a slave is turned into a master, the current replication ID
+     * (that was inherited from the master at synchronization time) is
+     * used as secondary ID up to the current offset, and a new replication
+     * ID is created to continue with a new replication history.
+     *
+     * NOTE: this function MUST be called after we call
+     * freeClient(server.master), since there we adjust the replication
+     * offset trimming the final PINGs. See Github issue #7320. */
+    shiftReplicationId();
     /* Disconnecting all the slaves is required: we need to inform slaves
      * of the replication ID change (see shiftReplicationId() call). However
      * the slaves will be able to partially resync with us, so it will be
@@ -2737,34 +2780,6 @@ void replicationCacheMasterUsingMyself(void) {
      * master as server.cached_master, so the replica will use such
      * offset for PSYNC. */
     server.master_initial_offset = server.master_repl_offset;
-
-    /* However if the "meaningful" offset, that is the offset without
-     * the final PINGs in the stream, is different, use this instead:
-     * often when the master is no longer reachable, replicas will never
-     * receive the PINGs, however the master will end with an incremented
-     * offset because of the PINGs and will not be able to incrementally
-     * PSYNC with the new master. */
-    if (server.master_repl_offset > server.master_repl_meaningful_offset) {
-        long long delta = server.master_repl_offset -
-                          server.master_repl_meaningful_offset;
-        serverLog(LL_NOTICE,
-            "Using the meaningful offset %lld instead of %lld to exclude "
-            "the final PINGs (%lld bytes difference)",
-                server.master_repl_meaningful_offset,
-                server.master_repl_offset,
-                delta);
-        server.master_initial_offset = server.master_repl_meaningful_offset;
-        server.master_repl_offset = server.master_repl_meaningful_offset;
-        if (server.repl_backlog_histlen <= delta) {
-            server.repl_backlog_histlen = 0;
-            server.repl_backlog_idx = 0;
-        } else {
-            server.repl_backlog_histlen -= delta;
-            server.repl_backlog_idx =
-                (server.repl_backlog_idx + (server.repl_backlog_size - delta)) %
-                server.repl_backlog_size;
-        }
-    }
 
     /* The master client we create can be set to any DBID, because
      * the new master will start its replication stream with SELECT. */
@@ -3156,18 +3171,10 @@ void replicationCron(void) {
             clientsArePaused();
 
         if (!manual_failover_in_progress) {
-            long long before_ping = server.master_repl_meaningful_offset;
             ping_argv[0] = createStringObject("PING",4);
             replicationFeedSlaves(server.slaves, server.slaveseldb,
                 ping_argv, 1);
             decrRefCount(ping_argv[0]);
-            /* The server.master_repl_meaningful_offset variable represents
-             * the offset of the replication stream without the pending PINGs.
-             * This is useful to set the right replication offset for PSYNC
-             * when the master is turned into a replica. Otherwise pending
-             * PINGs may not allow it to perform an incremental sync with the
-             * new master. */
-            server.master_repl_meaningful_offset = before_ping;
         }
     }
 
