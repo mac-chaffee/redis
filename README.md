@@ -36,10 +36,14 @@ All other supported commands can be constructed similarly.
 
 The contents of homepage.html are accessed by the key "/", which cannot be modified.
 
+## Deployment
+
+`./deploy.sh`
+
 ### ACLs
 
 I use ACLs (new in redis 6.0) to prevent anonymous users from running dangerous commands.
-These ACLs can be found on line 764 of redis.conf.
+These ACLs can be found on line 765 of redis.conf.
 
 ## Limitations
 
