@@ -3456,7 +3456,7 @@ int processCommand(client *c) {
     int acl_keypos;
     int acl_retval = ACLCheckCommandPerm(c,&acl_keypos);
     /* Always allow read access so unauth'ed users can see the homepage */
-    if (acl_retval != ACL_OK && !(c->cmd->flags & CMD_READONLY) ) {
+    if (acl_retval != ACL_OK && !(c->cmd->flags & CMD_READONLY)) {
         addACLLogEntry(c,acl_retval,acl_keypos,NULL);
         flagTransaction(c);
         if (acl_retval == ACL_DENIED_CMD)

@@ -1446,7 +1446,7 @@ void resetClient(client *c) {
     redisCommandProc *prevcmd = c->cmd ? c->cmd->proc : NULL;
 
     freeClientArgv(c);
-    c->reqtype = 0;
+    // c->reqtype = 0; Needed in writeToClient
     c->multibulklen = 0;
     c->bulklen = -1;
 

@@ -58,7 +58,7 @@ Here is the exact script your browser will execute:
 <script style="display: block;">
 function execute(event) {
     // Build the URL
-    let url = `${window.location.href}/${window.MY_KEY}`;
+    let url = `${window.location.href}${window.MY_KEY}`;
     if (window.MY_ARGS !== "") {
         url += window.MY_ARGS
     }
